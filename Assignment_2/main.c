@@ -1,184 +1,170 @@
-// C program to illustrate the implementation of lexical 
-// analyser 
-
-#include <ctype.h> 
-#include <stdbool.h> 
-#include <stdio.h> 
-#include <stdlib.h> 
-#include <string.h> 
+#include <stdio.h>
+#include <ctype.h>
+#include <stdbool.h>
+#include <string.h>
 #include <limits.h>
-#define MAX_LENGTH 100
-#define MAX_ID_LENGTH 31
+#include<stdlib.h>
+// Define the maximum length for tokens
+#define MAX_TOKEN_LENGTH 100
+#define MAX_IDENTIFIER_LENGTH 64
+// Token types
+typedef enum {
+    TOKEN_KEYWORD,
+    TOKEN_IDENTIFIER,
+    TOKEN_NUMBER,
+    TOKEN_OPERATOR,
+    TOKEN_EOF,
+    TOKEN_UNKNOWN,
+    TOKEN_ERROR
+} TokenType;
 
-// this function check for a delimiter(it is a piece of data 
-// that seprated it from other) to peform some specif case 
-// on it 
-bool isDelimiter(char chr) {
-    return strchr(" ;,()+-*/%=<>[]{}", chr) != NULL;
+// Token structure
+typedef struct {
+    char lexeme[MAX_TOKEN_LENGTH];
+    TokenType type;
+} Token;
+
+// Keywords array
+const char *keywords[] = {"return", "int", "float", "if", "else"};
+const int num_keywords = 5;
+
+// Get the string representation of token types
+const char* get_token_type_string(TokenType type) {
+    switch (type) {
+        case TOKEN_KEYWORD: return "Keyword";
+        case TOKEN_IDENTIFIER: return "Identifier";
+        case TOKEN_NUMBER: return "Number";
+        case TOKEN_OPERATOR: return "Operator";
+        case TOKEN_EOF: return "EOF";
+        case TOKEN_UNKNOWN: return "Unknown";
+        case TOKEN_ERROR: return "Error";
+        default: return "Unknown";
+    }
 }
 
-// this function check for a valid identifier eg:- +,-* etc 
-bool isOperator(char chr) 
-{ 
-	return (chr == '+' || chr == '-' || chr == '*'
-			|| chr == '/' || chr == '>' || chr == '<'
-			|| chr == '='); 
-} 
-
-// this function check for an valid identifier 
-bool isValidIdentifier(char* str) {
-    int length = strlen(str);
-    if (length > MAX_ID_LENGTH) {
-        printf("Error: Identifier exceeds maximum length of %d characters\n", MAX_ID_LENGTH);
-        return false;
-    }
-    if (!isalpha(str[0]) && str[0] != '_') {
-        printf("Error: Invalid start of identifier\n");
-        return false;
-    }
-    for (int i = 1; i < length; i++) {
-        if (!isalnum(str[i]) && str[i] != '_') {
-            printf("Error: Invalid character in identifier\n");
-            return false;
+// Check if a string is a keyword
+bool is_keyword(const char *str) {
+    for (int i = 0; i < num_keywords; i++) {
+        if (strcmp(str, keywords[i]) == 0) {
+            return true;
         }
     }
-    return true;
+    return false;
 }
 
-bool isInteger(char* str) {
-    int length = strlen(str);
+// Get the next token from the input
+Token get_token(FILE *fp) {
+    Token token;
+    int c, peek;
+    int i = 0;
 
-    long long value = atoll(str);
-    if (value < INT_MIN || value > INT_MAX) {
-        printf("Error: Integer constant out of range\n");
-        return false;
+    // Skip whitespace
+    while ((c = fgetc(fp)) != EOF && isspace(c));
+
+    if (c == EOF) {
+        strcpy(token.lexeme, "EOF");
+        token.type = TOKEN_EOF;
+        return token;
     }
-    for (int i = 0; i < length; i++) {
-        if (!isdigit(str[i]) && !(i == 0 && (str[i] == '+' || str[i] == '-'))) { // In most programming languages and numerical representations, a number can optionally start with a + (plus) or - (minus) sign. These signs indicate whether the number is positive or negative, respectively. This convention allows for clear differentiation between positive and negative numbers.
-            printf("Error: Invalid integer format\n");
-            return false;
-        }
-    }
-    return true;
-}
 
-// 32 Keywords are checked in this function and return the 
-// result accordingly 
-bool isKeyword(char* str) 
-{ 
-	const char* keywords[] 
-		= { "auto",	 "break", "case",	 "char", 
-			"const", "continue", "default", "do", 
-			"double", "else",	 "enum",	 "extern", 
-			"float", "for",	 "goto",	 "if", 
-			"int",	 "long",	 "register", "return", 
-			"short", "signed", "sizeof", "static", 
-			"struct", "switch", "typedef", "union", 
-			"unsigned", "void",	 "volatile", "while" }; 
-	for (int i = 0; 
-		i < sizeof(keywords) / sizeof(keywords[0]); i++) { 
-		if (strcmp(str, keywords[i]) == 0) { 
-			return true; 
-		} 
-	} 
-	return false; 
-} 
-
-
-// trims a substring from a given string's start and end 
-// position 
-char* getSubstring(char* str, int start, int end) 
-{ 
-	int length = strlen(str); 
-	int subLength = end - start + 1; 
-	char* subStr 
-		= (char*)malloc((subLength + 1) * sizeof(char)); 
-	strncpy(subStr, str + start, subLength); 
-	subStr[subLength] = '\0'; 
-	return subStr; 
-} 
-
-bool isLegalCharacter(char chr) {
-    return isalnum(chr) || isDelimiter(chr) || isOperator(chr) || isspace(chr);
-}
-
-
-// this function parse the input 
-int lexicalAnalyzer(char* input) 
-{ 
-	int left = 0, right = 0; 
-	int len = strlen(input); 
-
-	while (right <= len && left <= right) { 
-
-        bool is_right_delimiter = isDelimiter(input[right]);
-
-        bool is_right_minus_one_delimiter = isDelimiter(input[right - 1]);
-
-
-        if (!isLegalCharacter(input[right]) && input[right] != '\0') { // Check for illegal characters
-            printf("Error: Illegal character '%c' found at position %d\n", input[right], right);
-            right++;
-            left = right;  // Skip over the illegal character
-            continue;
-        }
-
-
-		if (!is_right_delimiter) 
-			right++; 
-
-		if (is_right_delimiter && left == right) { 
-			if (isOperator(input[right])) 
-				printf("Token: Operator, Value: %c\n", 
-					input[right]); 
-
-			right++; 
-			left = right; 
-		} 
-		else if (is_right_delimiter && left != right 
-				|| (right == len && left != right)) { 
-			char* subStr 
-				= getSubstring(input, left, right - 1); 
-
-            bool is_valid_indentifier_substr = isValidIdentifier(subStr);
+    if (isdigit(c)) { // Number or invalid identifier start
+        token.lexeme[i++] = c;
+        peek = fgetc(fp);
+        if (isalpha(peek)) { // Invalid identifier starting with a number
+            ungetc(peek, fp); // Put the character back for further processing
+            while (isalnum(c = fgetc(fp)) && i < MAX_TOKEN_LENGTH) {
+                token.lexeme[i++] = c;
+            }
+            token.lexeme[i] = '\0';
+            token.type = TOKEN_ERROR;
+            strcpy(token.lexeme, "Invalid identifier starting with a number");
+            return token;
+        } else { // It's a number
+            ungetc(peek, fp); // Put the character back for number processing
+            bool isNegative = (c == '-');
+            if (isNegative) {
+                token.lexeme[i++] = c;
+                c = fgetc(fp);  // Next character must be digit, already checked
+                token.lexeme[i++] = c;
+            }
             
+            long num = c - '0';
+            while (isdigit(c = fgetc(fp))) {
+                token.lexeme[i++] = c;
+                if (isNegative) {
+                    if (num < INT_MIN / 10 || (num == INT_MIN / 10 && -(c - '0') < INT_MIN % 10)) {
+                        token.type = TOKEN_ERROR;
+                        strcpy(token.lexeme, "Integer underflow");
+                        break;
+                    }
+                    num = num * 10 - (c - '0');
+                } else {
+                    if (num > INT_MAX / 10 || (num == INT_MAX / 10 && (c - '0') > INT_MAX % 10)) {
+                        token.type = TOKEN_ERROR;
+                        strcpy(token.lexeme, "Integer overflow");
+                        break;
+                    }
+                    num = num * 10 + (c - '0');
+                }
+            }
 
-			if (isKeyword(subStr)) 
-				printf("Token: Keyword, Value: %s\n", 
-					subStr); 
-
-			else if (isInteger(subStr)) 
-				printf("Token: Integer, Value: %s\n", 
-					subStr); 
-
-			else if (is_valid_indentifier_substr 
-					&& !is_right_minus_one_delimiter) 
-				printf("Token: Identifier, Value: %s\n", 
-					subStr); 
-
-			else if (!is_valid_indentifier_substr
-					&& !is_right_minus_one_delimiter) 
-				printf("Token: Unidentified, Value: %s\n", 
-					subStr); 
-			left = right; 
-		} 
-	} 
-	return 0; 
-} 
-
-// main function 
-int main() 
-{ 
-	// Input 01 
-	// char lex_input[MAX_LENGTH] = "int a = b + c + 2147483649"; 
-    char lex_input[MAX_LENGTH] = "int x = 12$34"; 
-	printf("For Expression \"%s\":\n", lex_input); 
-	lexicalAnalyzer(lex_input); 
-	printf(" \n"); 
-	// Input 02 
-	char lex_input01[MAX_LENGTH] 
-		= "int x=ab+bc+30+switch+ 0y "; 
-	printf("For Expression \"%s\":\n", lex_input01); 
-	lexicalAnalyzer(lex_input01); 
-	return (0); 
+            if (token.type != TOKEN_ERROR) {
+                token.lexeme[i] = '\0';
+                ungetc(c, fp);
+                token.type = TOKEN_NUMBER;
+            }
+            return token;
+        }
+    } else if (isalpha(c) || c == '_') { // Identifier or keyword
+        token.lexeme[i++] = c;
+        while (isalnum(c = fgetc(fp)) || c == '_' && i < MAX_IDENTIFIER_LENGTH) {
+            token.lexeme[i++] = c;
+        }
+        token.lexeme[i] = '\0';
+        ungetc(c, fp); // Put back the non-alphanumeric character
+        if (i >= MAX_IDENTIFIER_LENGTH) {
+            token.type = TOKEN_ERROR;
+            strcpy(token.lexeme, "Identifier length exceeded");
+        } else if (is_keyword(token.lexeme)) {
+            token.type = TOKEN_KEYWORD;
+        } else {
+            token.type = TOKEN_IDENTIFIER;
+        }
+        return token;
+    } else if (c == '+' || c == '-' || c == '*' || c == '/') { // Operator
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_OPERATOR;
+        return token;
+    } else { // Handle illegal or unknown characters
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_UNKNOWN; // Unrecognized but not illegal
+        return token;
+    }
 }
+
+
+
+int main(int argc, char *argv[]) {
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+        exit(1);
+    }
+
+    FILE *fp = fopen(argv[1], "r");
+    if (!fp) {
+        fprintf(stderr, "Error opening file %s\n", argv[1]);
+        exit(1);
+    }
+
+    Token token;
+    do {
+        token = get_token(fp);
+        printf("Token: %-20s Type: %s\n", token.lexeme, get_token_type_string(token.type));
+    } while (token.type != TOKEN_EOF && token.type != TOKEN_ERROR);
+
+    fclose(fp);
+    return 0;
+}
+
