@@ -3,38 +3,64 @@
 #include <stdbool.h>
 #include <string.h>
 #include <limits.h>
-#include<stdlib.h>
-// Define the maximum length for tokens
+#include <stdlib.h>
+
 #define MAX_TOKEN_LENGTH 100
 #define MAX_IDENTIFIER_LENGTH 64
-// Token types
+
 typedef enum {
     TOKEN_KEYWORD,
     TOKEN_IDENTIFIER,
     TOKEN_NUMBER,
     TOKEN_OPERATOR,
+    TOKEN_DOT,
+    TOKEN_COLON,
+    TOKEN_ESCAPE_CHAR,
+    TOKEN_LPAREN,      // '('
+    TOKEN_RPAREN,      // ')'
+    TOKEN_LBRACE,      // '{'
+    TOKEN_RBRACE,      // '}'
+    TOKEN_LBRACKET,    // '['
+    TOKEN_RBRACKET,    // ']'
+    TOKEN_SEMICOLON,   // ';'
+    TOKEN_COMMA,       // ','
+    TOKEN_AMPERSAND,   // '&'
+    TOKEN_PIPE,        // '|'
+    TOKEN_EXCLAMATION, // '!'
     TOKEN_EOF,
     TOKEN_UNKNOWN,
     TOKEN_ERROR
 } TokenType;
 
-// Token structure
 typedef struct {
     char lexeme[MAX_TOKEN_LENGTH];
     TokenType type;
 } Token;
 
-// Keywords array
-const char *keywords[] = {"return", "int", "float", "if", "else"};
+// const char *keywords[] = {"return", "int", "float", "if", "else"};
+const char *keywords[] = {"return", "int", "float", "if", "else", "while", "for", "break", "continue", "char", "double"};
 const int num_keywords = 5;
 
-// Get the string representation of token types
 const char* get_token_type_string(TokenType type) {
     switch (type) {
         case TOKEN_KEYWORD: return "Keyword";
         case TOKEN_IDENTIFIER: return "Identifier";
         case TOKEN_NUMBER: return "Number";
         case TOKEN_OPERATOR: return "Operator";
+        case TOKEN_DOT: return "Dot";
+        case TOKEN_COLON: return "Colon";
+        case TOKEN_ESCAPE_CHAR: return "Escape Character";
+        case TOKEN_LPAREN: return "Left Parenthesis";
+        case TOKEN_RPAREN: return "Right Parenthesis";
+        case TOKEN_LBRACE: return "Left Brace";
+        case TOKEN_RBRACE: return "Right Brace";
+        case TOKEN_LBRACKET: return "Left Bracket";
+        case TOKEN_RBRACKET: return "Right Bracket";
+        case TOKEN_SEMICOLON: return "Semicolon";
+        case TOKEN_COMMA: return "Comma";
+        case TOKEN_AMPERSAND: return "Ampersand";
+        case TOKEN_PIPE: return "Pipe";
+        case TOKEN_EXCLAMATION: return "Exclamation Mark";
         case TOKEN_EOF: return "EOF";
         case TOKEN_UNKNOWN: return "Unknown";
         case TOKEN_ERROR: return "Error";
@@ -42,7 +68,6 @@ const char* get_token_type_string(TokenType type) {
     }
 }
 
-// Check if a string is a keyword
 bool is_keyword(const char *str) {
     for (int i = 0; i < num_keywords; i++) {
         if (strcmp(str, keywords[i]) == 0) {
@@ -52,13 +77,11 @@ bool is_keyword(const char *str) {
     return false;
 }
 
-// Get the next token from the input
 Token get_token(FILE *fp) {
     Token token;
     int c, peek;
     int i = 0;
 
-    // Skip whitespace
     while ((c = fgetc(fp)) != EOF && isspace(c));
 
     if (c == EOF) {
@@ -67,11 +90,11 @@ Token get_token(FILE *fp) {
         return token;
     }
 
-    if (isdigit(c)) { // Number or invalid identifier start
+    if (isdigit(c)) {
         token.lexeme[i++] = c;
         peek = fgetc(fp);
-        if (isalpha(peek)) { // Invalid identifier starting with a number
-            ungetc(peek, fp); // Put the character back for further processing
+        if (isalpha(peek)) {
+            ungetc(peek, fp);
             while (isalnum(c = fgetc(fp)) && i < MAX_TOKEN_LENGTH) {
                 token.lexeme[i++] = c;
             }
@@ -79,15 +102,15 @@ Token get_token(FILE *fp) {
             token.type = TOKEN_ERROR;
             strcpy(token.lexeme, "Invalid identifier starting with a number");
             return token;
-        } else { // It's a number
-            ungetc(peek, fp); // Put the character back for number processing
+        } else {
+            ungetc(peek, fp);
             bool isNegative = (c == '-');
             if (isNegative) {
                 token.lexeme[i++] = c;
-                c = fgetc(fp);  // Next character must be digit, already checked
+                c = fgetc(fp);
                 token.lexeme[i++] = c;
             }
-            
+
             long num = c - '0';
             while (isdigit(c = fgetc(fp))) {
                 token.lexeme[i++] = c;
@@ -115,13 +138,13 @@ Token get_token(FILE *fp) {
             }
             return token;
         }
-    } else if (isalpha(c) || c == '_') { // Identifier or keyword
+    } else if (isalpha(c) || c == '_') {
         token.lexeme[i++] = c;
-        while (isalnum(c = fgetc(fp)) || c == '_' && i < MAX_IDENTIFIER_LENGTH) {
+        while (isalnum(c = fgetc(fp)) || (c == '_' && i < MAX_IDENTIFIER_LENGTH)) {
             token.lexeme[i++] = c;
         }
         token.lexeme[i] = '\0';
-        ungetc(c, fp); // Put back the non-alphanumeric character
+        ungetc(c, fp);
         if (i >= MAX_IDENTIFIER_LENGTH) {
             token.type = TOKEN_ERROR;
             strcpy(token.lexeme, "Identifier length exceeded");
@@ -131,20 +154,89 @@ Token get_token(FILE *fp) {
             token.type = TOKEN_IDENTIFIER;
         }
         return token;
-    } else if (c == '+' || c == '-' || c == '*' || c == '/') { // Operator
+    } else if (c == '+' || c == '-' || c == '*' || c == '/') {
         token.lexeme[0] = c;
         token.lexeme[1] = '\0';
         token.type = TOKEN_OPERATOR;
         return token;
-    } else { // Handle illegal or unknown characters
+    } else if (c == '.') {
         token.lexeme[0] = c;
         token.lexeme[1] = '\0';
-        token.type = TOKEN_UNKNOWN; // Unrecognized but not illegal
+        token.type = TOKEN_DOT;
+        return token;
+    } else if (c == ':') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_COLON;
+        return token;
+    } else if (c == '\\') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = fgetc(fp); 
+        token.lexeme[2] = '\0';
+        token.type = TOKEN_ESCAPE_CHAR;
+        return token;
+    } else if (c == '(') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_LPAREN;
+        return token;
+    } else if (c == ')') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_RPAREN;
+        return token;
+    } else if (c == '{') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_LBRACE;
+        return token;
+    } else if (c == '}') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_RBRACE;
+        return token;
+    } else if (c == '[') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_LBRACKET;
+        return token;
+    } else if (c == ']') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_RBRACKET;
+        return token;
+    } else if (c == ';') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_SEMICOLON;
+        return token;
+    } else if (c == ',') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_COMMA;
+        return token;
+    } else if (c == '&') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_AMPERSAND;
+        return token;
+    } else if (c == '|') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_PIPE;
+        return token;
+    } else if (c == '!') {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_EXCLAMATION;
+        return token;
+    } else {
+        token.lexeme[0] = c;
+        token.lexeme[1] = '\0';
+        token.type = TOKEN_UNKNOWN;
         return token;
     }
 }
-
-
 
 int main(int argc, char *argv[]) {
     if (argc != 2) {
@@ -167,4 +259,3 @@ int main(int argc, char *argv[]) {
     fclose(fp);
     return 0;
 }
-
