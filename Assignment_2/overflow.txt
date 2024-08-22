@@ -1,0 +1,27 @@
+// Test cases to check the lexical analyzer's handling of errors and token recognition.
+
+// Case 1: Valid identifiers and keywords
+int validIdentifier;
+float anotherValidIdentifier;
+
+// Case 2: Exceedingly long identifier to test length limit
+thisIdentifierNameIsWayTooLongToBeAcceptedByTheLexicalAnalyzerCheckToSeeIfItDetectsThisCorrectly;
+
+// Case 3: Integer within the valid range
+int validNumber = 2147483647;
+
+// Case 4: Integer overflow
+int overflowNumber = 2147483648;
+
+// Case 5: Integer underflow
+int underflowNumber = -2147483649;
+
+// Case 6: Operators and unknown tokens
++ - * / %;
+
+// Case 7: Additional tests
+if (validIdentifier > 0) {
+    return validNumber;
+} else {
+    return -1;
+}
