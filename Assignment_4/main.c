@@ -133,7 +133,7 @@ void followfirst(char c, int c1, int c2)
 					// Recursion to the next symbol
 					// in case we encounter a "#"
 					followfirst(production[c1][c2], c1,
-								c2 + 1);
+								c2 + 1); // ???????????????????
 				}
 			}
 			j++;
