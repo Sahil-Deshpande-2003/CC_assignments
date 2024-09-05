@@ -4,6 +4,13 @@
 #include <stdio.h>
 #include <string.h>
 
+#define MAX_PRODUCTIONS 20
+#define MAX_SYMBOLS 100
+
+
+
+
+
 // Functions to calculate Follow
 void followfirst(char, int, int);
 void follow(char c);
@@ -15,15 +22,15 @@ int count, n = 0; // count: Will store the number of production rules in the gra
 
 // Stores the final result
 // of the First Sets
-char calc_first[10][100];
+char calc_first[MAX_PRODUCTIONS][MAX_SYMBOLS];
 
 // Stores the final result
 // of the Follow Sets
-char calc_follow[10][100];
+char calc_follow[MAX_PRODUCTIONS][MAX_SYMBOLS];
 int m = 0; // Counter used in the follow() function to track the number of symbols added to the Follow set.
 
 // Stores the production rules
-char production[10][10]; // A 2D array to store the production rules of the grammar. Each row represents a production in the form A = B, where A is the left-hand side (LHS) non-terminal and B is the right-hand side (RHS) string.
+char production[MAX_PRODUCTIONS][MAX_SYMBOLS]; // A 2D array to store the production rules of the grammar. Each row represents a production in the form A = B, where A is the left-hand side (LHS) non-terminal and B is the right-hand side (RHS) string.
 char f[10]; // store symbols during the calculation of the Follow set.
 char first[10]; // store symbols during the calculation of the First set
 int k;
@@ -63,6 +70,12 @@ void follow(char c)
 	}
 }
 
+/*
+q1: Represents the index of the production rule in the production[] array. It indicates which production rule is being analyzed.
+q2: Represents the position (or index) of the symbol within the right-hand side (RHS) of the production rule. It helps in tracking the current symbol being processed after a non-terminal or terminal.
+c: It is the non-terminal symbol whose First set needs to be determined.
+*/
+
 void findfirst(char c, int q1, int q2)
 {
 	int j;
@@ -76,7 +89,9 @@ void findfirst(char c, int q1, int q2)
 		if (production[j][0] == c) {
 			if (production[j][2] == '#') {
 				if (production[q1][q2] == '\0')
-					first[n++] = '#';
+					first[n++] = '#'; /* A → B
+										B → #  => # is added to First(A)    
+										*/
 				else if (production[q1][q2] != '\0'
 						&& (q1 != 0 || q2 != 0)) {
 					// Recursion to calculate First of New
@@ -84,18 +99,41 @@ void findfirst(char c, int q1, int q2)
 					// epsilon
 					findfirst(production[q1][q2], q1,
 							(q2 + 1));
+					/*
+					
+					A → Bc
+					B → #
+
+					Here, when analyzing A → Bc and B → #, since c follows B in A → Bc, the function will recursively calculate First(c) and add it to First(A).
+					*/
 				}
 				else
 					first[n++] = '#';
 			}
 			else if (!isupper(production[j][2])) {
-				first[n++] = production[j][2]; // ??????????
+				first[n++] = production[j][2]; // Insert the non terminal
 			}
 			else {
 				// Recursion to calculate First of
 				// New Non-Terminal we encounter
 				// at the beginning
-				findfirst(production[j][2], j, 3); // ??????????
+				findfirst(production[j][2], j, 3); 
+
+				/*
+				1. A → BC
+				2. B → d
+				3. C → e
+				Analyzing the production A → BC:
+
+				You are calculating First(A), and the first symbol on the RHS is B, which is a non-terminal.
+				Recursion on B:
+
+				Since B is a non-terminal, the function will call findfirst(B) to calculate First(B).
+				Finding First(B) (B → d):
+
+				For the production B → d, d is a terminal, so First(B) is {d}.
+
+				*/
 			}
 		}
 	}
@@ -121,19 +159,20 @@ void followfirst(char c, int c1, int c2)
 		// the original query
 		while (calc_first[i][j] != '!') {
 			if (calc_first[i][j] != '#') {
-				f[m++] = calc_first[i][j];
+				f[m++] = calc_first[i][j]; /*
+				This checks if the current element in the First set is not epsilon (#). If the symbol is a terminal or any other non-epsilon symbol, it is added to the Follow set.*/
 			}
 			else {
 				if (production[c1][c2] == '\0') {
 					// Case where we reach the
 					// end of a production
-					follow(production[c1][0]);
+					follow(production[c1][0]); 
 				}
 				else {
 					// Recursion to the next symbol
 					// in case we encounter a "#"
 					followfirst(production[c1][c2], c1,
-								c2 + 1); // ???????????????????
+								c2 + 1);  // If the current symbol is epsilon, but it’s not the end of the production, it means there are more symbols after this. In this case, the followfirst() function is called recursively to calculate the First set of the next symbol (production[c1][c2]) after epsilon
 				}
 			}
 			j++;
@@ -143,7 +182,7 @@ void followfirst(char c, int c1, int c2)
 
 int main(int argc, char** argv)
 {
-	int jm = 0;
+	int jm = 0; // jm and km are counters used for tracking the position in the first and f arrays, respectively
 	int km = 0;
 	int i, choice;
 	char c, ch;
@@ -159,6 +198,19 @@ int main(int argc, char** argv)
 	strcpy(production[6], "R=om");
 	strcpy(production[7], "R=ST");
 
+	
+	
+	// count = 5;
+	// // Example: Update with new grammar rules
+	// strcpy(production[0], "A=BC");
+	// strcpy(production[1], "B=DE");
+	// strcpy(production[2], "C=a");
+	// strcpy(production[3], "D=b");
+	// strcpy(production[4], "E=c");
+
+
+	
+
 	int kay;
 	char done[count];
 	int ptr = -1;
@@ -166,11 +218,16 @@ int main(int argc, char** argv)
 	// Initializing the calc_first array
 	for (k = 0; k < count; k++) {
 		for (kay = 0; kay < 100; kay++) {
-			calc_first[k][kay] = '!';
+			calc_first[k][kay] = '!'; // Initializes calc_first with ! to denote uncomputed values.
 		}
 	}
 	int point1 = 0, point2, xxx;
 
+	/*
+	Iterates through each non-terminal to compute its First set.
+Checks if the First set for a non-terminal is already computed. If not, it calls findfirst() to compute it.
+Updates the done list and prints the computed First set.
+	*/
 	for (k = 0; k < count; k++) { // The outer loop iterates over each production rule to calculate the First set of the non-terminal on the left-hand side (LHS).
 		c = production[k][0]; // Extracts the non-terminal from the LHS of the k-th production rule.
 		point2 = 0;
@@ -270,4 +327,10 @@ int main(int argc, char** argv)
 		km = m;
 		point1++;
 	}
+	/*
+	
+	Iterates through each non-terminal to compute its Follow set.
+Checks if the Follow set for a non-terminal is already computed. If not, it calls follow() to compute it.
+Updates the donee list and prints the computed Follow set.
+	*/
 }
